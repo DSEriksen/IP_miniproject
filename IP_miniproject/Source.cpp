@@ -63,7 +63,7 @@ Mat createRotationMatrix(double theta, double x, double y, double _scale) {
 	double alpha = scale*cos(angle);
 	double beta = scale*sin(angle);
 
-	/*
+	
 	Mat rotMat = Mat(2, 3, CV_64FC1);
 	rotMat.at<double>(0,0) = alpha;
 	rotMat.at<double>(0,1) = beta;
@@ -71,35 +71,55 @@ Mat createRotationMatrix(double theta, double x, double y, double _scale) {
 	rotMat.at<double>(1,0) = (beta*(-1));
 	rotMat.at<double>(1,1) = alpha;
 	rotMat.at<double>(1,2) = (beta*cenX) + ((1 - alpha)*cenY);
-	*/
-
+	
+/*
 	Mat rotMat = Mat(2, 2, CV_64FC1);
 	rotMat.at<double>(0, 0) = cos(angle);
 	rotMat.at<double>(0, 1) = sin(angle) *(-1);
 	rotMat.at<double>(1, 0) = sin(angle);
 	rotMat.at<double>(1, 1) = cos(angle);
-
+*/
 	return rotMat;
 }
 
-Mat rotate(Mat _mat, Mat _rotMat, double x, double y) {
+Mat rotate(Mat _mat, Mat _rotMat) {
 
 	Mat dst = Mat::zeros(Size(_mat.rows, _mat.cols), _mat.type());
 	_mat.copyTo(dst);
+	dst.convertTo(dst, CV_64FC1);
 
 	Mat rotMat = Mat::zeros(Size(_rotMat.rows, _rotMat.cols), _rotMat.type());
 	_rotMat.copyTo(rotMat);
 
-	int p1;
-	int p2;
-	int temp;
+	double p1;
+	double p2;
+	double Rx = (rotMat.at<double>(0, 0)) + (rotMat.at<double>(0, 1)) + (rotMat.at<double>(0, 2));
+	double Ry = (rotMat.at<double>(1, 0)) - (rotMat.at<double>(1, 1)) - (rotMat.at<double>(1, 2));
+	cout << "rotate() rotMat = " << endl << rotMat;
+	cout << endl << "Rx = " << Rx;
+	cout << endl << "Ry = " << Ry;
+
+	for (int y = 0; y < 5; y++) {
+		for (int x = 0; x < dst.cols; x++){
+
+			p1 = dst.at<double>(x, y);
+			p2 = dst.at<double>((int)Rx, (int)Ry);
+		}
+	}
+
+
+
 
 	//find point 1
 	//find point 2
 	//tempsave point 1
 	//set point 1 to point 2 
 	//set point 2 to tempsave 
+
+
+
 	
+/*
 	for (int y = 0; y < dst.rows; y++) {
 		for (int x = 0; x < dst.cols; x++) {
 			p1 = dst.at<uchar>(x, y);
@@ -114,6 +134,7 @@ Mat rotate(Mat _mat, Mat _rotMat, double x, double y) {
 
 		}
 	}
+*/
 
 
 	return dst;
@@ -128,8 +149,7 @@ int main(int, char** argv) {
 	//Mat rotationMatrix = getRotationMatrix2D(Point(250, 250), 45, 0.7);
 
 	//custom
-	Mat rotMat = createRotationMatrix(45, newImage.rows/2,newImage.cols/2, 1);
-	cout << rotMat;
+	Mat rotMat = createRotationMatrix(20, newImage.rows/4,newImage.cols/2, 1);
 
 	namedWindow("dog", CV_WINDOW_AUTOSIZE);
 	imshow("dog", newImage);
