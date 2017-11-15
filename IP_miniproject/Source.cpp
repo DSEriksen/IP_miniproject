@@ -7,36 +7,52 @@ using namespace std;
 
 # define PI 3.14159265358979323846
 
-bool detectKey(int ms) {
-	int key = waitKey(ms);
-	if (key == 32) {
-		return true;
+int interpolate(Mat _mat, double _x, double _y) {
+	int Vx = (int)round(_x);
+	int Vy = (int)round(_y);
+
+	if (Vx >= 0 && Vx < _mat.cols && Vy >= 0 && Vy < _mat.rows) {
+		return (int)_mat.at<uchar>(Vx, Vy);
 	}
-	else if (key == 8) {
-		return true;
+	else {
+		return -1;
 	}
-	return false;  
 }
 
-void basicDisPrint(Mat _image) {
+Vec3d multiplyVecMat(Vec3d _V, Mat _mat) {
 
-	cvtColor(_image, _image, COLOR_BGR2GRAY);
-	namedWindow("dog");
+	Vec3d vec = _V;
 
-	imshow("dog", _image);
-	cout << "rows: " << _image.rows << endl;
-	cout << "cols: " << _image.cols << endl;
-	cout << "pixels: " << _image.rows * _image.cols << endl;
-	cout << "adkaspdk: " << _image.at<Point>(Point(5, 3));
+	for (int i = 0; i < _V.rows; i++) {
+		//cout << "current vec-iteration = [" << i << "]" << endl;
 
-	//opencv scaling
-	/*Mat imgSmall = _image;
-	resize(imgSmall, imgSmall, Size(5, 5));
-	namedWindow("dog small");
-	imshow("dog small", imgSmall);
-	cout << "Matrix = " << imgSmall << endl;*/
+		double sum = 0;
+		for (int j = 0; j < _mat.cols; j++) {
+			//cout << "current mat-iteration = [" << j << "]" << endl;
+			//cout << "multiplying [" << _mat.at<double>(i, j) << "] with [" << vec[j] << "]" << endl;
+
+			sum += _mat.at<double>(i, j) * vec[j];
+		}
+		//cout << "vec iteration [" << i << "] sum is currently = [" << sum << "]" << endl << endl;
+		vec[i] = sum;
+	}
+	return vec;
 }
 
+Mat transform(double _dx, double _dy) {
+	Mat transMat = Mat(3, 3, CV_64FC1);
+
+	return transMat;
+}
+
+Mat createNewRotMat(Mat _mat, double _rx, double _ry, double alpha, double beta, double theta) {
+	Mat newRotMat = Mat::zeros(_mat.rows, _mat.cols, _mat.type());
+	_mat.copyTo(newRotMat);
+	
+	
+
+	return newRotMat;
+}
 
 //reading an image (thats already been read through imread) and copying each pixel to a new mat
 Mat readImage(Mat _image) {
@@ -63,7 +79,7 @@ Mat createRotationMatrix(double theta, double x, double y, double _scale) {
 	double alpha = scale*cos(angle);
 	double beta = scale*sin(angle);
 
-	
+	/*
 	Mat rotMat = Mat(2, 3, CV_64FC1);
 	rotMat.at<double>(0,0) = alpha;
 	rotMat.at<double>(0,1) = beta;
@@ -71,74 +87,79 @@ Mat createRotationMatrix(double theta, double x, double y, double _scale) {
 	rotMat.at<double>(1,0) = (beta*(-1));
 	rotMat.at<double>(1,1) = alpha;
 	rotMat.at<double>(1,2) = (beta*cenX) + ((1 - alpha)*cenY);
-	
-/*
-	Mat rotMat = Mat(2, 2, CV_64FC1);
+	*/
+
+	Mat rotMat = Mat(3, 3, CV_64FC1);
+	//row1
 	rotMat.at<double>(0, 0) = cos(angle);
-	rotMat.at<double>(0, 1) = sin(angle) *(-1);
-	rotMat.at<double>(1, 0) = sin(angle);
+	rotMat.at<double>(0, 1) = sin(angle);
+	rotMat.at<double>(0, 2) = 0;
+	//row2
+	rotMat.at<double>(1, 0) = sin(angle)*(-1);
 	rotMat.at<double>(1, 1) = cos(angle);
-*/
+	rotMat.at<double>(1, 2) = 0;
+	//row3
+	rotMat.at<double>(2, 0) = 0;
+	rotMat.at<double>(2, 1) = 0;
+	rotMat.at<double>(2, 2) = 1;
+
+
 	return rotMat;
 }
 
 Mat rotate(Mat _mat, Mat _rotMat) {
 
+	namedWindow("dst");
+
 	Mat dst = Mat::zeros(Size(_mat.rows, _mat.cols), _mat.type());
 	_mat.copyTo(dst);
-	dst.convertTo(dst, CV_64FC1);
+	//dst.convertTo(dst, CV_64FC1);
+
+	imshow("dst", dst);
 
 	Mat rotMat = Mat::zeros(Size(_rotMat.rows, _rotMat.cols), _rotMat.type());
 	_rotMat.copyTo(rotMat);
 
-	double p1;
-	double p2;
-	double Rx = (rotMat.at<double>(0, 0)) + (rotMat.at<double>(0, 1)) + (rotMat.at<double>(0, 2));
-	double Ry = (rotMat.at<double>(1, 0)) - (rotMat.at<double>(1, 1)) - (rotMat.at<double>(1, 2));
-	cout << "rotate() rotMat = " << endl << rotMat;
-	cout << endl << "Rx = " << Rx;
-	cout << endl << "Ry = " << Ry;
 
-	for (int y = 0; y < 5; y++) {
+	for (int y = 0; y < dst.rows; y++) {
 		for (int x = 0; x < dst.cols; x++){
 
-			p1 = dst.at<double>(x, y);
-			p2 = dst.at<double>((int)Rx, (int)Ry);
+			//1. create unit vector
+				//create vector (1 dim array) which consists of the rotation matrix(so far the 2x2) multiplied into x,y and 1
+
+			Vec3d V = Vec3d(x, y, 1);
+			Vec3d Vm = multiplyVecMat(V, rotMat);
+
+			//2. create pixel value
+				//create a pixel int, which is defined by the interpolation of the dst position in matrix, and the values of the vector above
+
+			int pixel = interpolate(dst, Vm[0], Vm[1]);
+			//cout << pixel << endl << endl;
+
+			//3. set the current position in the destination array to the current pixel value.
+				//set the pixelvalue in the output array (dst)
+			//cout << dst;
+
+			if (pixel > -1) {
+				dst.at<uchar>(x, y) = pixel;	
+			}
+			else {
+				dst.at<uchar>(x, y) = 0;
+			}
+			
+			
 		}
+		
 	}
+	//cout << dst;
 
 
-
-
-	//find point 1
-	//find point 2
-	//tempsave point 1
-	//set point 1 to point 2 
-	//set point 2 to tempsave 
-
-
-
-	
-/*
-	for (int y = 0; y < dst.rows; y++) {
-		for (int x = 0; x < dst.cols; x++) {
-			p1 = dst.at<uchar>(x, y);
-			p2 = dst.at<uchar>(
-								(_rotMat.at<double>(0,0)*x) + (_rotMat.at<double>(0,1)*y) - //x * cos(a) + sin(a)
-
-
-			//find point2
-			temp = dst.at<uchar>(
-
-				)
-
-		}
-	}
-*/
-
-
+	//namedWindow("dst2");
+	//imshow("dst2", dst);
 	return dst;
 }
+
+
 
 int main(int, char** argv) {
 
@@ -146,24 +167,34 @@ int main(int, char** argv) {
 	Mat newImage = readImage(image);
 
 	//cheat
-	//Mat rotationMatrix = getRotationMatrix2D(Point(250, 250), 45, 0.7);
+	Mat rotationMatrix = getRotationMatrix2D(Point(250, 250), 45, 1);
 
 	//custom
-	Mat rotMat = createRotationMatrix(20, newImage.rows/4,newImage.cols/2, 1);
+	Mat rotMat = createRotationMatrix(1, newImage.rows/2,newImage.cols/2, 1);
+
+	cout << "Rotation Matrix = " << rotMat << endl;
+
+
+/*	Print multiply test
+	Vec3d V = Vec3d(4, 4, 1);
+	cout << "Vector org = " << V << endl;
+	Vec3d Vm = multiplyVecMat(V, rotMat);
+	cout << "Vector mult = " << Vm << endl;
+*/
 
 	namedWindow("dog", CV_WINDOW_AUTOSIZE);
 	imshow("dog", newImage);
 
 	//cheat
-	//warpAffine(newImage, newImage, rotMat, newImage.size());
+	//warpAffine(newImage, newImage, rotationMatrix, newImage.size());
 
 	//custom
-	Mat rotatedMat = rotate(newImage, rotMat);
+	Mat rotatedImage = rotate(newImage, rotMat);
 
 
 	//rotated display
 	namedWindow("dog rotate", CV_WINDOW_AUTOSIZE);
-	imshow("dog rotate", newImage);
+	imshow("dog rotate", rotatedImage);
 	
 
 	waitKey(0);
